@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+bcrypt
+python-jose[cryptography]
+python-multipart
+pydantic-settings
+alembic
+google-generativeai

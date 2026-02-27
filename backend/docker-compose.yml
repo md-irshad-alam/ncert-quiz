@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+      - ./ncert_revision.db:/app/ncert_revision.db
+    environment:
+      - MODULE_NAME=app.main
+      - VARIABLE_NAME=app
+      - DATABASE_URL=sqlite:////app/ncert_revision.db
+      - SECRET_KEY=dev_secret_key_change_me
