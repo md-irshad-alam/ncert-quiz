@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.models.chapter import Chapter
 from app.models.subject import Subject
 from app.models.class_ import SchoolClass
+from app.models.flashcard import Flashcard, FlashcardResponse
 from app.models.mcq import MCQ, MCQResponse
 
 router = APIRouter()
@@ -57,7 +58,7 @@ def generate_mcqs(*, session: Session = Depends(get_session), chapter_id: int, c
     """
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         response = model.generate_content(prompt)
         text_response = response.text.strip()
         
@@ -99,3 +100,70 @@ def generate_mcqs(*, session: Session = Depends(get_session), chapter_id: int, c
         if existing_mcqs:
             return existing_mcqs
         raise HTTPException(status_code=500, detail="Failed to generate MCQs from AI")
+
+@router.post("/generate-flashcard/{chapter_id}", response_model=List[FlashcardResponse])
+def generate_flashcards(*, session: Session = Depends(get_session), chapter_id: int, current_user = Depends(get_current_user)):
+    if not settings.GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key is not configured")
+
+    existing_fc = session.exec(select(Flashcard).where(Flashcard.chapter_id == chapter_id)).all()
+    if len(existing_fc) >= 5:
+        return existing_fc
+
+    chapter = session.get(Chapter, chapter_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+        
+    subject = session.get(Subject, chapter.subject_id)
+    school_class = session.get(SchoolClass, subject.class_id)
+
+    prompt = f"""
+    Generate 5 educational flashcards for students studying in Indian school system (NCERT/CBSE).
+    Class: {school_class.name}
+    Subject: {subject.name}
+    Chapter: {chapter.title}
+
+    Format the output strictly as a JSON array of objects with the following keys exactly:
+    "question": "A concise question or term"
+    "answer": "A clear, concise, and accurate answer or definition"
+
+    Only return valid JSON array, no markdown wrappers formatting, no extra text.
+    """
+
+    try:
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        response = model.generate_content(prompt)
+        text_response = response.text.strip()
+        
+        if text_response.startswith('```json'):
+            text_response = text_response[7:]
+        if text_response.startswith('```'):
+            text_response = text_response[3:]
+        if text_response.endswith('```'):
+            text_response = text_response[:-3]
+            
+        fc_list = json.loads(text_response.strip())
+        
+        new_fcs = []
+        for item in fc_list:
+            fc = Flashcard(
+                chapter_id=chapter_id,
+                question=item.get("question", ""),
+                answer=item.get("answer", "")
+            )
+            session.add(fc)
+            new_fcs.append(fc)
+            
+        session.commit()
+        
+        for fc in new_fcs:
+            session.refresh(fc)
+            
+        return new_fcs
+
+    except Exception as e:
+        session.rollback()
+        print(f"Error generating Flashcards: {e}")
+        if existing_fc:
+            return existing_fc
+        raise HTTPException(status_code=500, detail="Failed to generate Flashcards from AI")
