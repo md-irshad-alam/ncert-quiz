@@ -1,23 +1,47 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { apiClient } from '../../api/client';
 
 export const FlashcardsScreen = () => {
   const route = useRoute<any>();
-  const chapterId = route.params?.chapterId;
+  const navigation = useNavigation<any>();
+  const chapterId = route.params?.chapterId || 1;
 
-  const mockCards = [
-    { id: 1, question: "What is a rational number?", answer: "A number that can be expressed as the quotient p/q of two integers, where q ≠ 0." },
-    { id: 2, question: "Define Euclid's Division Lemma", answer: "Given positive integers a and b, there exist unique integers q and r satisfying a = bq + r, 0 ≤ r < b." },
-    { id: 3, question: "What is the Fundamental Theorem of Arithmetic?", answer: "Every composite number can be expressed as a product of primes, and this factorisation is unique." },
-  ];
+  const [cards, setCards] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
+  useEffect(() => {
+    const fetchFlashcards = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await apiClient.post(`/ai/generate-flashcard/${chapterId}`);
+        if (response.data && response.data.length > 0) {
+          setCards(response.data);
+        } else {
+          setError('No flashcards available for this chapter.');
+        }
+      } catch (err: any) {
+        if (err.response?.status === 429) {
+          setError(err.response.data?.detail || "You've exceeded today's limit of 5 AI requests. Please try again tomorrow! 🌟");
+        } else {
+          setError('Failed to generate Flashcards. Check your API key.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFlashcards();
+  }, [chapterId]);
+
   const handleNext = () => {
-    if (currentIndex < mockCards.length - 1) {
+    if (currentIndex < cards.length - 1) {
       setCurrentIndex(i => i + 1);
       setIsFlipped(false);
     }
@@ -30,11 +54,41 @@ export const FlashcardsScreen = () => {
     }
   };
 
-  const card = mockCards[currentIndex];
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <View style={styles.loadingCircle}>
+          <ActivityIndicator size="large" color="#6366f1" />
+        </View>
+        <Text style={styles.loadingTitle}>Generating AI Flashcards</Text>
+        <Text style={styles.loadingSub}>Powered by Google Gemini ✨</Text>
+      </View>
+    );
+  }
+
+  if (error || cards.length === 0) {
+    const isRateLimit = error?.includes('limit');
+    return (
+      <View style={styles.center}>
+        <View style={[styles.loadingCircle, { backgroundColor: isRateLimit ? '#fff7ed' : '#fef2f2' }]}>
+          <Ionicons name={isRateLimit ? "time" : "alert-circle"} size={40} color={isRateLimit ? "#f97316" : "#ef4444"} />
+        </View>
+        <Text style={styles.loadingTitle}>{isRateLimit ? 'Daily Limit Reached' : 'Oops!'}</Text>
+        <Text style={[styles.loadingSub, { textAlign: 'center', marginBottom: 24, paddingHorizontal: 20 }]}>
+          {error || 'No flashcards found'}
+        </Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtnText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const card = cards[currentIndex];
 
   return (
     <View style={styles.container}>
-      <Text style={styles.counter}>{currentIndex + 1} / {mockCards.length}</Text>
+      <Text style={styles.counter}>{currentIndex + 1} / {cards.length}</Text>
 
       <TouchableOpacity
         style={[styles.card, isFlipped && styles.cardFlipped]}
@@ -74,13 +128,13 @@ export const FlashcardsScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.navBtn, styles.navBtnPrimary, currentIndex === mockCards.length - 1 && styles.navBtnDisabled]}
+          style={[styles.navBtn, styles.navBtnPrimary, currentIndex === cards.length - 1 && styles.navBtnDisabled]}
           onPress={handleNext}
-          disabled={currentIndex === mockCards.length - 1}
+          disabled={currentIndex === cards.length - 1}
           activeOpacity={0.7}
         >
-          <Text style={[styles.navBtnText, { color: currentIndex === mockCards.length - 1 ? '#d1d5db' : '#fff' }]}>Next</Text>
-          <Ionicons name="arrow-forward" size={20} color={currentIndex === mockCards.length - 1 ? '#d1d5db' : '#fff'} />
+          <Text style={[styles.navBtnText, { color: currentIndex === cards.length - 1 ? '#d1d5db' : '#fff' }]}>Next</Text>
+          <Ionicons name="arrow-forward" size={20} color={currentIndex === cards.length - 1 ? '#d1d5db' : '#fff'} />
         </TouchableOpacity>
       </View>
     </View>
@@ -92,6 +146,15 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: '#f8fafc', padding: 20,
     alignItems: 'center', justifyContent: 'center',
   },
+  center: { flex: 1, backgroundColor: '#f8fafc', justifyContent: 'center', alignItems: 'center', padding: 30 },
+  loadingCircle: {
+    width: 90, height: 90, borderRadius: 45, backgroundColor: '#e0e7ff',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 24,
+  },
+  loadingTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 6, textAlign: 'center' },
+  loadingSub: { fontSize: 14, color: '#9ca3af' },
+  backBtn: { marginTop: 20, backgroundColor: '#f3f4f6', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
+  backBtnText: { fontSize: 15, fontWeight: '600', color: '#374151' },
   counter: {
     fontSize: 14, fontWeight: '700', color: '#9ca3af',
     textTransform: 'uppercase', letterSpacing: 1, marginBottom: 28,
@@ -131,7 +194,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff', borderWidth: 1.5, borderColor: '#e5e7eb',
   },
   navBtnPrimary: {
-    backgroundColor: '#22c55e', borderColor: '#22c55e',
+    backgroundColor: '#6366f1', borderColor: '#6366f1',
   },
   navBtnDisabled: {
     opacity: 0.5,

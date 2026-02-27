@@ -40,8 +40,12 @@ export const PracticeScreen = () => {
         } else {
           setError('No questions available for this chapter.');
         }
-      } catch {
-        setError('Failed to generate questions. Check your API key.');
+      } catch (err: any) {
+        if (err.response?.status === 429) {
+          setError(err.response.data?.detail || "You've exceeded today's limit of 5 AI requests. Please try again tomorrow! 🌟");
+        } else {
+          setError('Failed to generate questions. Check your API key.');
+        }
       } finally {
         setLoading(false);
       }
@@ -90,12 +94,16 @@ export const PracticeScreen = () => {
   }
 
   if (error || mcqs.length === 0) {
+    const isRateLimit = error?.includes('limit');
     return (
       <View style={styles.center}>
-        <View style={[styles.loadingCircle, { backgroundColor: '#fef2f2' }]}>
-          <Ionicons name="alert-circle" size={40} color="#ef4444" />
+        <View style={[styles.loadingCircle, { backgroundColor: isRateLimit ? '#fff7ed' : '#fef2f2' }]}>
+          <Ionicons name={isRateLimit ? "time" : "alert-circle"} size={40} color={isRateLimit ? "#f97316" : "#ef4444"} />
         </View>
-        <Text style={styles.loadingTitle}>{error || 'No questions found'}</Text>
+        <Text style={styles.loadingTitle}>{isRateLimit ? 'Daily Limit Reached' : 'Oops!'}</Text>
+        <Text style={[styles.loadingSub, { textAlign: 'center', marginBottom: 24, paddingHorizontal: 20 }]}>
+          {error || 'No questions found'}
+        </Text>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backBtnText}>Go Back</Text>
         </TouchableOpacity>

@@ -47,7 +47,6 @@ export const HomeScreen = () => {
           }));
           setClasses(formattedClasses);
         } else {
-          // Fallback static data to show UI
           setClasses([
             { id: 1, name: 'Class 6', subjects: 3, color: CLASS_COLORS[0], icon: CLASS_ICONS[0] },
             { id: 2, name: 'Class 7', subjects: 2, color: CLASS_COLORS[1], icon: CLASS_ICONS[1] },
@@ -103,10 +102,21 @@ export const HomeScreen = () => {
                 <Text style={styles.welcomeLabel}>Welcome back 👋</Text>
                 <Text style={styles.appTitle}>NCERT Revision</Text>
               </View>
-              <TouchableOpacity style={styles.streakPill} onPress={logout} activeOpacity={0.7}>
-                <Ionicons name="flame" size={17} color="#f97316" />
-                <Text style={styles.streakValue}>{stats.streak}</Text>
-              </TouchableOpacity>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={styles.streakPill}>
+                  <Ionicons name="flame" size={17} color="#f97316" />
+                  <Text style={styles.streakValue}>{stats.streak}</Text>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.profileAvatarBtn} 
+                  onPress={() => navigation.navigate('Profile')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.profileAvatarText}>S</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </SafeAreaView>
         </Animated.View>
@@ -114,22 +124,22 @@ export const HomeScreen = () => {
         {/* ─── Stat Cards (overlapping header) ─── */}
         <Animated.View style={[styles.statsRow, { opacity: statsAnim, transform: [{ translateY: statsAnim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }]}>
           <View style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#ecfdf5' }]}>
-              <Ionicons name="checkmark-done-circle" size={22} color="#10b981" />
+            <View style={styles.statIconWrap}>
+              <Ionicons name="checkmark-done-circle" size={22} color="#22c55e" />
             </View>
             <Text style={styles.statNumber}>{stats.accuracy}%</Text>
             <Text style={styles.statCaption}>Accuracy</Text>
           </View>
           <View style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#eff6ff' }]}>
-              <Ionicons name="book" size={22} color="#3b82f6" />
+            <View style={styles.statIconWrap}>
+              <Ionicons name="book" size={22} color="#22c55e" />
             </View>
             <Text style={styles.statNumber}>{stats.completed_chapters}</Text>
             <Text style={styles.statCaption}>Completed</Text>
           </View>
           <View style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#fefce8' }]}>
-              <Ionicons name="flash" size={22} color="#eab308" />
+            <View style={styles.statIconWrap}>
+              <Ionicons name="flash" size={22} color="#22c55e" />
             </View>
             <Text style={styles.statNumber}>{stats.total_quizzes}</Text>
             <Text style={styles.statCaption}>Quizzes</Text>
@@ -157,7 +167,7 @@ export const HomeScreen = () => {
         <Animated.View style={{ opacity: gridAnim, transform: [{ translateY: gridAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }] }}>
           <View style={styles.sectionRow}>
             <View style={styles.sectionIconBg}>
-              <Ionicons name="school" size={18} color="#16a34a" />
+              <Ionicons name="school" size={18} color="#22c55e" />
             </View>
             <Text style={styles.sectionLabel}>Select Your Class</Text>
           </View>
@@ -237,6 +247,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#ffffff',
   },
+  profileAvatarBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  profileAvatarText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#22c55e',
+  },
 
   /* Stats */
   statsRow: {
@@ -262,6 +287,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
+    backgroundColor: '#dcfce7',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,

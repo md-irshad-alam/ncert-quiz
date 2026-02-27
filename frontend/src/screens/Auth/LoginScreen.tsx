@@ -20,7 +20,10 @@ export const LoginScreen = () => {
     setLoading(true);
     try {
       const response = await loginUser(email, password);
-      if (response.access_token) {
+      if (response.requires_otp) {
+        navigation.navigate('OTP', { userId: response.user_id, email });
+      } else if (response.access_token) {
+        // Fallback or previously used flow
         await login(response.access_token);
       }
     } catch (error: any) {

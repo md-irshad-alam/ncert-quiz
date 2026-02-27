@@ -2,8 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1 import auth, content, revision, ai
-
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.db import init_db
+
+limiter = Limiter(key_func=get_remote_address)
 
 # Initialize database
 init_db()
@@ -13,6 +17,9 @@ app = FastAPI(
     description="Backend API for the NCERT Smart Revision Mobile App",
     version=settings.VERSION,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS setup for mobile app/frontend access
 app.add_middleware(
