@@ -7,4 +7,5 @@ python-multipart
 pydantic-settings
 alembic
 google-generativeai
+slowapi
 psycopg2-binary==2.9.11
