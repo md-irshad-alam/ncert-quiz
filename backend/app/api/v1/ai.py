@@ -11,6 +11,8 @@ from app.models.subject import Subject
 from app.models.class_ import SchoolClass
 from app.models.flashcard import Flashcard, FlashcardResponse
 from app.models.mcq import MCQ, MCQResponse
+from app.models.api_usage import ApiUsage
+from datetime import date
 
 router = APIRouter()
 
@@ -22,10 +24,15 @@ def generate_mcqs(*, session: Session = Depends(get_session), chapter_id: int, c
     if not settings.GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API Key is not configured")
 
-    # Check if we already have exactly 5 MCQs for this chapter (or some minimal number)
     existing_mcqs = session.exec(select(MCQ).where(MCQ.chapter_id == chapter_id)).all()
     if len(existing_mcqs) >= 5:
         return existing_mcqs
+
+    # AI Rate Limiting logic
+    today = date.today()
+    usage = session.exec(select(ApiUsage).where(ApiUsage.user_id == current_user.id).where(ApiUsage.usage_date == today)).first()
+    if usage and usage.request_count >= 5:
+        raise HTTPException(status_code=429, detail="You've exceeded today's limit of 5 AI requests. Please try again tomorrow! 🌟")
 
     # Fetch chapter context
     chapter = session.get(Chapter, chapter_id)
@@ -58,7 +65,7 @@ def generate_mcqs(*, session: Session = Depends(get_session), chapter_id: int, c
     """
 
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-2.1-flash')
         response = model.generate_content(prompt)
         text_response = response.text.strip()
         
@@ -88,6 +95,14 @@ def generate_mcqs(*, session: Session = Depends(get_session), chapter_id: int, c
             
         session.commit()
         
+        # Increment Rate Limit Counter
+        if not usage:
+            usage = ApiUsage(user_id=current_user.id, usage_date=today, request_count=1)
+            session.add(usage)
+        else:
+            usage.request_count += 1
+        session.commit()
+        
         for mcq in new_mcqs:
             session.refresh(mcq)
             
@@ -110,6 +125,12 @@ def generate_flashcards(*, session: Session = Depends(get_session), chapter_id: 
     if len(existing_fc) >= 5:
         return existing_fc
 
+    # AI Rate Limiting logic
+    today = date.today()
+    usage = session.exec(select(ApiUsage).where(ApiUsage.user_id == current_user.id).where(ApiUsage.usage_date == today)).first()
+    if usage and usage.request_count >= 5:
+        raise HTTPException(status_code=429, detail="You've exceeded today's limit of 5 AI requests. Please try again tomorrow! 🌟")
+
     chapter = session.get(Chapter, chapter_id)
     if not chapter:
         raise HTTPException(status_code=404, detail="Chapter not found")
@@ -131,7 +152,7 @@ def generate_flashcards(*, session: Session = Depends(get_session), chapter_id: 
     """
 
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-2.1-flash')
         response = model.generate_content(prompt)
         text_response = response.text.strip()
         
@@ -156,6 +177,14 @@ def generate_flashcards(*, session: Session = Depends(get_session), chapter_id: 
             
         session.commit()
         
+        # Increment Rate Limit Counter
+        if not usage:
+            usage = ApiUsage(user_id=current_user.id, usage_date=today, request_count=1)
+            session.add(usage)
+        else:
+            usage.request_count += 1
+        session.commit()
+
         for fc in new_fcs:
             session.refresh(fc)
             
