@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from typing import List
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import errors as genai_errors
 from app.db import get_session
 from app.api.deps import get_current_user
 from app.core.config import settings
@@ -16,8 +17,8 @@ from datetime import date
 
 router = APIRouter()
 
-if settings.GEMINI_API_KEY:
-    genai.configure(api_key=settings.GEMINI_API_KEY)
+# Use the new google-genai SDK with gemini-2.0-flash (free tier supported)
+GEMINI_MODEL = "gemini-2.0-flash"
 
 @router.post("/generate-mcq/{chapter_id}", response_model=List[MCQResponse])
 def generate_mcqs(*, session: Session = Depends(get_session), chapter_id: int, current_user = Depends(get_current_user)):
@@ -65,8 +66,11 @@ def generate_mcqs(*, session: Session = Depends(get_session), chapter_id: int, c
     """
 
     try:
-        model = genai.GenerativeModel('gemini-2.1-flash')
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt
+        )
         text_response = response.text.strip()
         
         # Clean up markdown JSON wrapper if the AI still includes it
@@ -108,10 +112,20 @@ def generate_mcqs(*, session: Session = Depends(get_session), chapter_id: int, c
             
         return new_mcqs
 
+    except genai_errors.ClientError as e:
+        session.rollback()
+        if '429' in str(e) or 'RESOURCE_EXHAUSTED' in str(e):
+            print(f"Gemini rate limit hit: {e}")
+            if existing_mcqs:
+                return existing_mcqs
+            raise HTTPException(status_code=429, detail="AI daily quota exceeded. Try again tomorrow or use existing questions.")
+        print(f"Error generating MCQs: {e}")
+        if existing_mcqs:
+            return existing_mcqs
+        raise HTTPException(status_code=500, detail="Failed to generate MCQs from AI")
     except Exception as e:
         session.rollback()
         print(f"Error generating MCQs: {e}")
-        # Return existing ones to fallback if any exist, else exception
         if existing_mcqs:
             return existing_mcqs
         raise HTTPException(status_code=500, detail="Failed to generate MCQs from AI")
@@ -152,8 +166,11 @@ def generate_flashcards(*, session: Session = Depends(get_session), chapter_id: 
     """
 
     try:
-        model = genai.GenerativeModel('gemini-2.1-flash')
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt
+        )
         text_response = response.text.strip()
         
         if text_response.startswith('```json'):

@@ -6,7 +6,11 @@ import { AppNavigator } from './AppNavigator';
 import { useAuthStore } from '../store/authStore';
 
 export const RootNavigator = () => {
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  // Use individual selectors — subscribing to the whole object at once
+  // prevents re-renders when a single field changes in Zustand.
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
 
   useEffect(() => {
     checkAuth();
@@ -15,7 +19,7 @@ export const RootNavigator = () => {
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0d6efd" />
+        <ActivityIndicator size="large" color="#22c55e" />
       </View>
     );
   }

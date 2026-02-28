@@ -1,11 +1,33 @@
+# Core API Framework
 fastapi
 uvicorn[standard]
+
+# Database ORM
 sqlmodel
+SQLAlchemy
+alembic
+
+# Authentication & Security
 bcrypt
 python-jose[cryptography]
+cryptography
+
+# Request Parsing
 python-multipart
+
+# Settings & Config
 pydantic-settings
-alembic
-google-generativeai
+python-dotenv
+
+# AI - Google Gemini
+google-genai
+
+# Rate Limiting
 slowapi
+
+# Database Driver (PostgreSQL - for production)
 psycopg2-binary==2.9.11
+
+# HTTP Client (used by google-genai internally)
+httpx
+requests

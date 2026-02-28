@@ -18,20 +18,22 @@ limiter = Limiter(key_func=get_remote_address)
 router = APIRouter()
 
 def send_otp_email(email: str, otp: str):
-    """Send OTP verification code via Outlook SMTP."""
+    """Send OTP verification code via Gmail SMTP."""
+
     smtp_email = getattr(settings, 'SMTP_EMAIL', None)
     smtp_password = getattr(settings, 'SMTP_PASSWORD', None)
-    
+
+    # Fallback if email not configured
     if not smtp_email or not smtp_password:
         print(f"\n{'='*40}\n📧 EMAIL SENT TO: {email}\n🔑 YOUR OTP CODE IS: {otp}\n{'='*40}\n")
         return
-    
+
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = "🔐 Your NCERT Revision Login OTP"
         msg["From"] = smtp_email
         msg["To"] = email
-        
+
         html_body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 30px;">
@@ -56,22 +58,22 @@ def send_otp_email(email: str, otp: str):
         </body>
         </html>
         """
-        
+
         msg.attach(MIMEText(html_body, "html"))
-        
-        with smtplib.SMTP("smtp-mail.outlook.com", 587) as server:
+
+        # ✅ Gmail SMTP
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
             server.login(smtp_email, smtp_password)
             server.sendmail(smtp_email, email, msg.as_string())
-        
+
         print(f"✅ OTP email sent successfully to {email}")
+
     except Exception as e:
         print(f"❌ Failed to send OTP email: {e}")
-        # Don't crash the login flow if email fails — OTP is still stored in DB
         print(f"🔑 Fallback — OTP for {email}: {otp}")
-
 @router.post("/signup", response_model=UserResponse)
 def signup(*, session: Session = Depends(get_session), user_in: UserCreate):
     user = session.exec(select(User).where(User.email == user_in.email)).first()
