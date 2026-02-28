@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from app.db import get_session
-from app.models.user import User, UserCreate, UserResponse, OTPVerify
+from app.models.user import User, UserCreate, UserResponse, OTPVerify, UserProfileUpdate
+from app.api.deps import get_current_user
 from app.core import security
 from app.core.config import settings
 from app.schemas.token import Token
@@ -136,3 +137,26 @@ def verify_otp(request: Request, *, session: Session = Depends(get_session), dat
         ),
         "token_type": "bearer",
     }
+
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: User = Depends(get_current_user)):
+    """Return the authenticated user's profile."""
+    return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    *,
+    session: Session = Depends(get_session),
+    body: UserProfileUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    """Update authenticated user's profile fields (partial update)."""
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+    return current_user

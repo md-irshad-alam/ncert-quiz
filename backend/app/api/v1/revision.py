@@ -44,8 +44,28 @@ def update_progress(*, session: Session = Depends(get_session), data: ProgressUp
 
 @router.get("/daily", response_model=List[MCQResponse])
 def daily_revision(*, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
-    # Pick 10 random MCQs for daily revision (can be optimized later)
-    # Using order_by(func.random()) in sqlite, or func.rand() / equivalent
+    """Return 10 random MCQs filtered to the user's selected class."""
+    from app.models.chapter import Chapter
+    from app.models.subject import Subject
+
+    if current_user.class_id:
+        # Get all chapter IDs for the user's class
+        subjects = session.exec(select(Subject).where(Subject.class_id == current_user.class_id)).all()
+        subject_ids = [s.id for s in subjects]
+        if subject_ids:
+            chapters = session.exec(select(Chapter).where(Chapter.subject_id.in_(subject_ids))).all()
+            chapter_ids = [c.id for c in chapters]
+            if chapter_ids:
+                mcqs = session.exec(
+                    select(MCQ)
+                    .where(MCQ.chapter_id.in_(chapter_ids))
+                    .order_by(func.random())
+                    .limit(10)
+                ).all()
+                if mcqs:
+                    return mcqs
+
+    # Fallback: any 10 random MCQs from the DB
     mcqs = session.exec(select(MCQ).order_by(func.random()).limit(10)).all()
     return mcqs
 

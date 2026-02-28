@@ -5,3 +5,4 @@ from .chapter import Chapter
 from .flashcard import Flashcard
 from .mcq import MCQ
 from .progress import Progress
+from .mcq_attempt import UserMCQAttempt, UserResetLog

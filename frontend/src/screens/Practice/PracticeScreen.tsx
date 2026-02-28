@@ -23,6 +23,26 @@ export const PracticeScreen = () => {
       try {
         setLoading(true);
         setError(null);
+
+        // Step 1: Try to load existing MCQs from the database (no AI call)
+        const existing = await apiClient.get(`/mcqs/${chapterId}`);
+        if (existing.data && existing.data.length > 0) {
+          const formatted = existing.data.map((mcq: any) => ({
+            id: mcq.id,
+            question: mcq.question,
+            options: [
+              { id: 'A', text: mcq.option_a },
+              { id: 'B', text: mcq.option_b },
+              { id: 'C', text: mcq.option_c },
+              { id: 'D', text: mcq.option_d },
+            ],
+            correct: mcq.correct,
+          }));
+          setMcqs(formatted);
+          return; // ✅ Data found, no AI needed
+        }
+
+        // Step 2: No existing data — trigger AI generation (uses quota)
         const response = await apiClient.post(`/ai/generate-mcq/${chapterId}`);
         if (response.data && response.data.length > 0) {
           const formatted = response.data.map((mcq: any) => ({
@@ -44,7 +64,7 @@ export const PracticeScreen = () => {
         if (err.response?.status === 429) {
           setError(err.response.data?.detail || "You've exceeded today's limit of 5 AI requests. Please try again tomorrow! 🌟");
         } else {
-          setError('Failed to generate questions. Check your API key.');
+          setError('Failed to load questions. Please try again.');
         }
       } finally {
         setLoading(false);
@@ -53,12 +73,19 @@ export const PracticeScreen = () => {
     fetchMCQs();
   }, [chapterId]);
 
+
   const handleSelect = (optId: string) => {
     if (selectedOption) return;
     setSelectedOption(optId);
-    if (optId === mcqs[currentIndex].correct) {
-      setScore(s => s + 1);
-    }
+    const isCorrect = optId === mcqs[currentIndex].correct;
+    if (isCorrect) setScore(s => s + 1);
+
+    // Save to backend history (fire-and-forget, don't block UI)
+    apiClient.post('/attempts', {
+      chapter_id: chapterId,
+      mcq_id: mcqs[currentIndex].id,
+      selected_answer: optId,
+    }).catch(() => {}); // silently ignore errors
   };
 
   const handleNext = () => {
@@ -147,10 +174,10 @@ export const PracticeScreen = () => {
         if (selectedOption) {
           if (opt.id === q.correct) {
             optStyle = { ...styles.option, backgroundColor: '#dcfce7', borderColor: '#22c55e' };
-            optTextStyle = { ...styles.optionText, color: '#16a34a', fontWeight: '700' };
+            optTextStyle = { ...styles.optionText, color: '#16a34a', fontWeight: '700' } as any;
           } else if (opt.id === selectedOption && opt.id !== q.correct) {
             optStyle = { ...styles.option, backgroundColor: '#fef2f2', borderColor: '#ef4444' };
-            optTextStyle = { ...styles.optionText, color: '#ef4444', fontWeight: '700' };
+            optTextStyle = { ...styles.optionText, color: '#ef4444', fontWeight: '700' } as any;
           }
         }
         return (

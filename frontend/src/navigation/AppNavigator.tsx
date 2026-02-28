@@ -9,6 +9,7 @@ import { FlashcardsScreen } from '../screens/Practice/FlashcardsScreen';
 import { DailyScreen } from '../screens/Daily/DailyScreen';
 import { ProgressScreen } from '../screens/Progress/ProgressScreen';
 import { ProfileScreen } from '../screens/Profile/ProfileScreen';
+import { EditProfileScreen } from '../screens/Profile/EditProfileScreen';
 import { View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -89,6 +90,7 @@ export const AppNavigator = () => {
       <Stack.Screen name="Practice" component={PracticeScreen} options={{ title: 'Practice MCQs' }} />
       <Stack.Screen name="Flashcards" component={FlashcardsScreen} options={{ title: 'Flashcards' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 };

@@ -6,16 +6,23 @@ import { useAuthStore } from '../../store/authStore';
 import { apiClient } from '../../api/client';
 
 export const ProfileScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const logout = useAuthStore((state) => state.logout);
   
-  const [email, setEmail] = useState('Student');
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [userType, setUserType] = useState('student');
 
-  useEffect(() => {
-    // In a real app we would fetch the user profile from /me endpoint.
-  }, []);
+  const loadProfile = async () => {
+    try {
+      const res = await apiClient.get('/auth/me');
+      setEmail(res.data.email || '');
+      setUsername(res.data.username || '');
+      setUserType(res.data.user_type || 'student');
+    } catch {}
+  };
 
-  const firstLetter = email ? email.charAt(0).toUpperCase() : 'S';
+  useEffect(() => { loadProfile(); }, []);
 
   const handleLogout = () => {
     Alert.alert(
@@ -40,6 +47,8 @@ export const ProfileScreen = () => {
     });
   };
 
+  const firstLetter = (username || email).charAt(0).toUpperCase() || 'S';
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -57,17 +66,29 @@ export const ProfileScreen = () => {
           <View style={styles.avatarContainer}>
             <Text style={styles.avatarText}>{firstLetter}</Text>
           </View>
-          <Text style={styles.userName}>Student Account</Text>
+          <Text style={styles.userName}>{username || 'Student Account'}</Text>
           <Text style={styles.userEmail}>{email}</Text>
           <View style={styles.badgeContainer}>
             <Ionicons name="shield-checkmark" size={14} color="#22c55e" />
-            <Text style={styles.badgeText}>Pro Member</Text>
+            <Text style={styles.badgeText}>{userType === 'parent' ? '👨‍👩‍👧 Parent' : '🎒 Student'}</Text>
           </View>
         </View>
 
         {/* Settings Section */}
         <Text style={styles.sectionTitle}>Settings</Text>
         <View style={styles.settingsGroup}>
+
+          <TouchableOpacity style={styles.settingItem} onPress={() => navigation.navigate('EditProfile')}>
+            <View style={styles.settingLeft}>
+              <View style={[styles.iconBox, { backgroundColor: '#f0fdf4' }]}>
+                <Ionicons name="person" size={20} color="#22c55e" />
+              </View>
+              <Text style={styles.settingText}>Edit Profile</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
 
           <TouchableOpacity style={styles.settingItem} onPress={handleContactUs}>
             <View style={styles.settingLeft}>

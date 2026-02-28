@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     GEMINI_API_KEY: Optional[str] = None
+    OPENROUTER_API_KEY: Optional[str] = None
     SMTP_EMAIL: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     

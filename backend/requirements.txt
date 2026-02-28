@@ -19,8 +19,8 @@ python-multipart
 pydantic-settings
 python-dotenv
 
-# AI - Google Gemini
-google-genai
+# AI - OpenRouter (OpenAI-compatible REST API, no extra SDK needed — uses httpx)
+httpx
 
 # Rate Limiting
 slowapi
@@ -28,6 +28,5 @@ slowapi
 # Database Driver (PostgreSQL - for production)
 psycopg2-binary==2.9.11
 
-# HTTP Client (used by google-genai internally)
-httpx
+# HTTP requests
 requests

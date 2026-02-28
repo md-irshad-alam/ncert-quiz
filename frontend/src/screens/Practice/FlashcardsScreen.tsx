@@ -21,6 +21,15 @@ export const FlashcardsScreen = () => {
       try {
         setLoading(true);
         setError(null);
+
+        // Step 1: Try to load existing flashcards from the database (no AI call)
+        const existing = await apiClient.get(`/flashcards/${chapterId}`);
+        if (existing.data && existing.data.length > 0) {
+          setCards(existing.data);
+          return; // ✅ Data found, no AI needed
+        }
+
+        // Step 2: No existing data — trigger AI generation (uses quota)
         const response = await apiClient.post(`/ai/generate-flashcard/${chapterId}`);
         if (response.data && response.data.length > 0) {
           setCards(response.data);
@@ -31,7 +40,7 @@ export const FlashcardsScreen = () => {
         if (err.response?.status === 429) {
           setError(err.response.data?.detail || "You've exceeded today's limit of 5 AI requests. Please try again tomorrow! 🌟");
         } else {
-          setError('Failed to generate Flashcards. Check your API key.');
+          setError('Failed to load flashcards. Please try again.');
         }
       } finally {
         setLoading(false);
@@ -39,6 +48,7 @@ export const FlashcardsScreen = () => {
     };
     fetchFlashcards();
   }, [chapterId]);
+
 
   const handleNext = () => {
     if (currentIndex < cards.length - 1) {
